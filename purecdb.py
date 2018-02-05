@@ -24,7 +24,7 @@ def uint32_pack(n):
     return struct.pack('<L', n)
 
 
-class CDBRead(object):
+class CDBReader(object):
     """CDB read object"""
 
     def __init__(self, name):
@@ -122,7 +122,7 @@ class CDBRead(object):
                 return keys
 
 
-class CDBWrite(object):
+class CDBWriter(object):
     """CDB write object"""
 
     def __init__(self, name):
