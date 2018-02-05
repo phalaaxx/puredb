@@ -1,5 +1,4 @@
-# cdb.py
-
+# purecdb.py
 
 import mmap
 import os
