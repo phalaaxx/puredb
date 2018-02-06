@@ -3,6 +3,7 @@
 import mmap
 import os
 import struct
+import tempfile
 
 
 def cdb_hash(buf):
@@ -126,9 +127,10 @@ class CDBWriter(object):
     """CDB writer object"""
 
     def __init__(self, name):
-        """Class constructor"""
-        self.fp = open(name, 'wb')
-        self.cdb_file = name
+        """Class constructor, open temp file in target directory"""
+        fd, self.temp_name = tempfile.mkstemp(dir=os.path.dirname(name))
+        self.fp = os.fdopen(fd, 'wb')
+        self.target_name = name
         self.pos = 2048
         self.tables = {}
         self.fp.seek(self.pos)
@@ -138,7 +140,7 @@ class CDBWriter(object):
         return self
 
     def __exit__(self, exit_type, exit_value, traceback):
-        """Flush and close CDB file"""
+        """Flush and close temp CDB file and rename it to target name"""
         final = b''
         for i in range(0, 256):
             entries = self.tables.get(i, [])
@@ -154,13 +156,11 @@ class CDBWriter(object):
             for h, p in table:
                 self.fp.write(uint32_pack(h) + uint32_pack(p))
                 self.pos += 8
-
         self.fp.flush()
         self.fp.seek(0)
         self.fp.write(final)
-
         self.fp.close()
-        self.fp = None
+        os.rename(self.temp_name, self.target_name)
 
     def add(self, key, value):
         """Add new key/value pair"""
