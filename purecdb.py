@@ -29,14 +29,14 @@ class CDBReader(object):
 
     def __init__(self, name):
         """Class constructor, initialize class variables"""
-        self.__loop = 0
-        self.__key_hash = 0
-        self.__hash_pos = 0
-        self.__hash_slots = 0
+        self.loop = 0
+        self.key_hash = 0
+        self.hash_pos = 0
+        self.hash_slots = 0
         fp = open(name, 'rb')
         fd = fp.fileno()
-        self.__mmap = mmap.mmap(fd, os.stat(fd).st_size, access=mmap.ACCESS_READ)
-        self.__key = None
+        self.mmap = mmap.mmap(fd, os.stat(fd).st_size, access=mmap.ACCESS_READ)
+        self.key = None
         self.key_pos = None
 
     def __enter__(self):
@@ -45,12 +45,12 @@ class CDBReader(object):
 
     def __exit__(self, exit_type, exit_value, traceback):
         """Close CDB file"""
-        self.__mmap.close()
-        self.__mmap = None
+        self.mmap.close()
+        self.mmap = None
 
     # read data
     def read(self, n, pos):
-        return self.__mmap[pos:pos + n]
+        return self.mmap[pos:pos + n]
 
     def prepare_find(self, key):
         """Prepare a new search"""
@@ -58,47 +58,47 @@ class CDBReader(object):
             key = str(key)
         if isinstance(key, str):
             key = key.encode()
-        self.__key = key
-        self.__loop = 0
+        self.key = key
+        self.loop = 0
 
     def find_next(self):
         """Find the specified key"""
-        if not self.__loop:
-            u = cdb_hash(self.__key)
+        if not self.loop:
+            u = cdb_hash(self.key)
             buf = self.read(8, u << 3 & 2047)
-            self.__hash_slots = uint32_unpack(buf[4:])
-            if not self.__hash_slots:
+            self.hash_slots = uint32_unpack(buf[4:])
+            if not self.hash_slots:
                 raise KeyError
-            self.__hash_pos = uint32_unpack(buf[:4])
-            self.__key_hash = u
+            self.hash_pos = uint32_unpack(buf[:4])
+            self.key_hash = u
             u >>= 8
-            u %= self.__hash_slots
+            u %= self.hash_slots
             u <<= 3
-            self.key_pos = self.__hash_pos + u
+            self.key_pos = self.hash_pos + u
 
-        while self.__loop < self.__hash_slots:
+        while self.loop < self.hash_slots:
             buf = self.read(8, self.key_pos)
             pos = uint32_unpack(buf[4:])
             if not pos:
                 raise KeyError
-            self.__loop += 1
+            self.loop += 1
             self.key_pos += 8
-            if self.key_pos == self.__hash_pos + (self.__hash_slots << 3):
-                self.key_pos = self.__hash_pos
+            if self.key_pos == self.hash_pos + (self.hash_slots << 3):
+                self.key_pos = self.hash_pos
             u = uint32_unpack(buf[:4])
-            if u == self.__key_hash:
+            if u == self.key_hash:
                 buf = self.read(8, pos)
                 u = uint32_unpack(buf[:4])
-                if u == len(self.__key):
-                    if self.__key == self.read(len(self.__key), pos + 8):
+                if u == len(self.key):
+                    if self.key == self.read(len(self.key), pos + 8):
                         data_len = uint32_unpack(buf[4:])
-                        data_pos = pos + 8 + len(self.__key)
+                        data_pos = pos + 8 + len(self.key)
                         return self.read(data_len, data_pos).decode()
         raise KeyError
 
     def get(self, key, n=-1):
         """Look up a cdb key"""
-        if self.__key != key or n != -1:
+        if self.key != key or n != -1:
             self.prepare_find(key)
         try:
             if n == -1:
@@ -127,11 +127,11 @@ class CDBWriter(object):
 
     def __init__(self, name):
         """Class constructor"""
-        self.__fp = open(name, 'wb')
+        self.fp = open(name, 'wb')
         self.cdb_file = name
-        self.__pos = 2048
-        self.__tables = {}
-        self.__fp.seek(self.__pos)
+        self.pos = 2048
+        self.tables = {}
+        self.fp.seek(self.pos)
 
     def __enter__(self):
         """Return object instance"""
@@ -141,9 +141,9 @@ class CDBWriter(object):
         """Flush and close CDB file"""
         final = b''
         for i in range(0, 256):
-            entries = self.__tables.get(i, [])
+            entries = self.tables.get(i, [])
             num_slots = 2 * len(entries)
-            final += uint32_pack(self.__pos) + uint32_pack(num_slots)
+            final += uint32_pack(self.pos) + uint32_pack(num_slots)
             null = (0, 0)
             table = [null] * num_slots
             for h, p in entries:
@@ -152,15 +152,15 @@ class CDBWriter(object):
                     n = (n + 1) % num_slots
                 table[n] = (h, p)
             for h, p in table:
-                self.__fp.write(uint32_pack(h) + uint32_pack(p))
-                self.__pos += 8
+                self.fp.write(uint32_pack(h) + uint32_pack(p))
+                self.pos += 8
 
-        self.__fp.flush()
-        self.__fp.seek(0)
-        self.__fp.write(final)
+        self.fp.flush()
+        self.fp.seek(0)
+        self.fp.write(final)
 
-        self.__fp.close()
-        self.__fp = None
+        self.fp.close()
+        self.fp = None
 
     def add(self, key, value):
         """Add new key/value pair"""
@@ -172,9 +172,9 @@ class CDBWriter(object):
             value = str(value)
         if isinstance(value, str):
             value = value.encode()
-        self.__fp.write(uint32_pack(len(key)) + uint32_pack(len(value)))
+        self.fp.write(uint32_pack(len(key)) + uint32_pack(len(value)))
         h = cdb_hash(key)
-        self.__fp.write(key)
-        self.__fp.write(value)
-        self.__tables.setdefault(h & 255, []).append((h, self.__pos))
-        self.__pos += 8 + len(key) + len(value)
+        self.fp.write(key)
+        self.fp.write(value)
+        self.tables.setdefault(h & 255, []).append((h, self.pos))
+        self.pos += 8 + len(key) + len(value)
