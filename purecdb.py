@@ -25,7 +25,7 @@ def uint32_pack(n):
 
 
 class CDBReader(object):
-    """CDB read object"""
+    """CDB reader object"""
 
     def __init__(self, name):
         """Class constructor, initialize class variables"""
@@ -123,7 +123,7 @@ class CDBReader(object):
 
 
 class CDBWriter(object):
-    """CDB write object"""
+    """CDB writer object"""
 
     def __init__(self, name):
         """Class constructor"""
