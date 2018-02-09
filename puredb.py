@@ -128,9 +128,10 @@ class CdbReader(object):
 class CdbWriter(object):
     """CDB writer object"""
 
-    def __init__(self, name):
+    def __init__(self, name, mode=0o644):
         """Class constructor, open temp file in target directory"""
         fd, self.temp_name = tempfile.mkstemp(dir=os.path.dirname(name))
+        os.fchmod(fd, mode=mode)
         self.fp = os.fdopen(fd, 'wb')
         self.target_name = name
         self.pos = 2048
@@ -185,12 +186,14 @@ class CdbWriter(object):
 class PasswdWriter(object):
     """A passwd file writer object"""
 
-    def __init__(self, name):
+    def __init__(self, name, mode=0o644):
         self.target = name
+        self.mode = mode
 
     def __enter__(self):
         """Open temporary database file"""
         fd, self.temp = tempfile.mkstemp(dir=os.path.dirname(self.target))
+        os.fchmod(fd, mode=self.mode)
         self.fp = os.fdopen(fd, 'w+')
         return self
 
