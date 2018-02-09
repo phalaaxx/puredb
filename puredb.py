@@ -1,9 +1,11 @@
-# purecdb.py
+# puredb.py
 
 import mmap
 import os
 import struct
 import tempfile
+
+__all__ = ['CdbReader', 'CdbWriter', 'PasswdWriter']
 
 
 def cdb_hash(buf):
@@ -25,7 +27,7 @@ def uint32_pack(n):
     return struct.pack('<L', n)
 
 
-class CDBReader(object):
+class CdbReader(object):
     """CDB reader object"""
 
     def __init__(self, name):
@@ -123,7 +125,7 @@ class CDBReader(object):
                 return keys
 
 
-class CDBWriter(object):
+class CdbWriter(object):
     """CDB writer object"""
 
     def __init__(self, name):
@@ -178,3 +180,34 @@ class CDBWriter(object):
         self.fp.write(value)
         self.tables.setdefault(h & 255, []).append((h, self.pos))
         self.pos += 8 + len(key) + len(value)
+
+
+class PasswdWriter(object):
+    """A passwd file writer object"""
+
+    def __init__(self, name):
+        self.target = name
+
+    def __enter__(self):
+        """Open temporary database file"""
+        fd, self.temp = tempfile.mkstemp(dir=os.path.dirname(self.target))
+        self.fp = os.fdopen(fd, 'w+')
+        return self
+
+    def __exit__(self, exit_type, exit_value, traceback):
+        """Flush database file and rename it to target"""
+        self.fp.close()
+        os.rename(self.temp, self.target)
+
+    def add(self, name: str, passwd: str = '', uid: int = 0, gid: int = 0, home: str = '', extra: str = ''):
+        """Append passwd entry in database file"""
+        self.fp.write(
+            '{0}:{1}:{2}:{3}::{4}::{5}\n'.format(
+                name,
+                passwd,
+                uid,
+                gid,
+                home,
+                extra,
+            ),
+        )
